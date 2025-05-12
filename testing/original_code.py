@@ -11,9 +11,6 @@ import matplotlib.pyplot as plt
 import adafruit_vl53l0x
 from cedargrove_nau7802 import NAU7802
 
-import csv
-from datetime import datetime
-
 # Load cell
 loadCelSensor = NAU7802(board.I2C(), address=0x2a, active_channels=1)
 
@@ -31,15 +28,7 @@ C1_tof = 1
 lst_load = [] # List to store load cell values
 lst_tof = [] # List to store load cell values
 
-current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-csv_filename = f"Data_Test_{current_time}.csv"
-csvfile = open(csv_filename, mode='w', newline='')
-csvwriter = csv.writer(csvfile)
-csvwriter.writerow(["Elapsed_s", "LoadCell_Raw", "ToF_Raw", "Load_Calibrated_N", "Displacement_mm"])
-
 print("Starting measurements. \n")
-
-start_time = time.time()
 
 # Perform measurements
 try:
@@ -47,40 +36,34 @@ try:
         # Get sensor readings
         loadCellValue = loadCelSensor.read()
         tofValue = tofSensor.range
+
+        # Output sensor data
+        # print to screen
+        print("Load cell: {:.0f}, Distance: {:.0f}".format(loadCellValue, tofValue))
+        # print("Load cell: {:.0f}".format(loadCellValue))
+        # save to file (during test, not afterwards), and these are the raw data 
+        file2write=open("Data_Test_CHANGENAME.txt",'a')
+        file2write.write(str(loadCellValue) + " " + str(tofValue) + "\n")
+        file2write.flush()
+        file2write.close()
         
         # 'translate' date to useful values 
         Load = C0_load + C1_load * loadCellValue 
-        Tof = C0_tof + C1_tof * tofValue
-
-        elapsed = time.time() - start_time
-
+        Tof = C0_tof + C1_tof * tofValue 
+        
         # append to the list 
         lst_load += [Load]
         lst_tof += [Tof]
         
-        # Get current time
-        timestamp = datetime.now().isoformat()
-
-        # Write to CSV
-        csvwriter.writerow([elapsed, loadCellValue, tofValue, Load, Tof])
-        csvfile.flush()
-
-        # Print to console
-        print(f"{elapsed:.3f} [s] | Load cell: {loadCellValue:.2f} [N], Load cell calibrated: {Load:.2f} [N], Distance: {tofValue:.2f} [mm], Distance calibrated: {Tof:.2f} [mm]")
-        
         # plot so we can see live what is happening
-        plt.clf()
-        plt.plot(lst_tof, lst_load, marker='o')
-        plt.title('Calibrated Load against calibrated displacement')
+        plt.plot(lst_tof, lst_load)
+        plt.title('Load against displacement')
         plt.xlabel('Displacement in mm')
         plt.ylabel('Load in N')
-        plt.grid(True)
+        plt.draw()
         plt.pause(0.001)
         time.sleep(1)
 
 # Exit
 except KeyboardInterrupt:
     print("\nexiting...\n")
-
-finally:
-    csvfile.close()
